@@ -3,7 +3,7 @@
 > Google **Antigravity CLI(`agy`)** 를 위한 하네스(Harness) 스킬.
 > 도메인에 특화된 다중 에이전트 팀과 그들이 사용할 커스텀 스킬 구조를 한 번에 스캐폴딩합니다.
 
-이 프로젝트는 [`revfactory/harness`](https://github.com/revfactory/harness)(Claude Code 용 메타 스킬)를 **Antigravity CLI(`agy`)** 환경에 맞게 재구성한 포팅입니다. Claude Code 의 `~/.claude/skills/` 규약 대신, `agy` 가 인식하는 스킬 디렉토리 규약(`SKILL.md` + YAML Frontmatter)을 따르도록 다시 작성했습니다.
+이 프로젝트는 [`revfactory/harness`](https://github.com/revfactory/harness)(Claude Code 용 메타 스킬)를 **Antigravity CLI(`agy`)** 환경에 맞게 재구성한 포팅입니다. Claude Code 의 `~/.claude/skills/` 규약 대신, `agy` 가 인식하는 스킬 디렉토리 규약(`~/.gemini/antigravity-cli/skills/`)을 따르도록 다시 작성했습니다.
 
 ---
 
@@ -32,18 +32,12 @@ agy --version
 
 ### 2) 스킬 배치
 
-`agy` 가 인식하는 사용자 스킬 경로(예: `~/.agy/skills/`) 또는 프로젝트 로컬 스킬 경로(`./.agents/skills/`)에 `skills/harness/` 디렉토리를 그대로 복사합니다.
+`agy` 가 인식하는 사용자 스킬 경로(`~/.gemini/antigravity-cli/skills/`)에 `skills/harness/` 디렉토리를 그대로 복사합니다.
 
 ```bash
 git clone https://github.com/revfactory/harness-for-agy.git
-cp -R harness-for-agy/skills/harness ~/.agy/skills/harness
-```
-
-또는 프로젝트 단위로 두려면:
-
-```bash
-mkdir -p ./.agents/skills
-cp -R harness-for-agy/skills/harness ./.agents/skills/harness
+mkdir -p ~/.gemini/antigravity-cli/skills
+cp -R harness-for-agy/skills/harness ~/.gemini/antigravity-cli/skills/harness
 ```
 
 설치 후 `agy` 세션에서 `/harness` 가 슬래시 커맨드로 노출됩니다.
@@ -132,7 +126,7 @@ allowed-tools:
 | 항목 | `revfactory/harness` (원본, Claude Code) | `harness-for-agy` (이 레포) |
 | --- | --- | --- |
 | 대상 CLI | Claude Code | Google Antigravity CLI (`agy`) |
-| 설치 경로 | `~/.claude/skills/` | `~/.agy/skills/` 또는 `./.agents/skills/` |
+| 설치 경로 | `~/.claude/skills/` | `~/.gemini/antigravity-cli/skills/` |
 | 스킬 본문 규약 | `SKILL.md` + Claude Code Frontmatter | `SKILL.md` + `agy` Frontmatter (`name`, `description`, `allowed-tools`) |
 | 산출물 위치 | `.claude/agents`, `.claude/skills` | `.agents/agents`, `.agents/skills` |
 | 슬래시 호출 | `/harness` (Claude Code) | `/harness` (`agy`) |
