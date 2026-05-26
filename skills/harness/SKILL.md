@@ -130,7 +130,47 @@ allowed-tools:
 
 ---
 
-### 6. 사용자 수련도(Skill Level)별 차등 구성 지침
+### 6. 대화 로그 기반 자가개선(Self-Improvement) 아키텍처 및 연동 규격
+
+스캐폴딩된 하네스 시스템은 사용자와의 실제 협업 내용 및 대화 로그를 기반으로 에이전트의 강령(Persona)과 스킬(Skill)을 지속적으로 스스로 보완 및 수정하는 **자가개선 루프(Self-Improvement Loop)**를 내장해야 합니다. 
+
+#### 1) 자가개선 전담 에이전트 (`harness-optimizer`) 요건 및 명세
+- **역할 및 사양**:
+  - 파일명: `.agents/agents/HarnessOptimizer.md` 및 `.agents/agents/harness_optimizer/agent.json`
+  - 에이전트명: `harness-optimizer`
+  - 설명: "사용자 대화 트랜스크립트와 실행 로그를 분석하여 하네스 내 에이전트의 강령 및 커스텀 스킬을 자동 보완하는 전담 최적화 에이전트"
+  - `enable_write_tools`: `true`로 설정 (에이전트 및 스킬 정의 파일을 수정하기 위함)
+- **시스템 지침 (System Prompt)**:
+  - Antigravity CLI의 대화 세션 로그 파일 경로(`<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`)를 탐색하여 로딩 및 파싱해야 합니다.
+  - 대화 내용에서 사용자의 교정 지시(예: "CSS 변수만 사용해줘", "이 기능은 모듈로 분리해줘") 및 실행 시 발생한 도구/명령어 실패 이력(Friction Points)을 체계적으로 추출합니다.
+  - 마찰이 발생한 컴포넌트(에이전트 또는 스킬)를 매핑하고, 개선이 필요한 구체적인 문맥과 대응 지침을 도출합니다.
+  - 대상 에이전트 정의(`.agents/agents/<AgentName>.md` 및 `agent.json`) 또는 스킬 명세(`.agents/skills/<skill-folder>/SKILL.md`)에 보완 규칙을 `replace_file_content` 도구 등을 사용하여 직접 반영합니다.
+  - 자가개선에 의해 변경된 사항은 `AGENTS.md`의 `[Change History]` 섹션에 신규 행으로 추가합니다. (작성일, 타입: `Self-Improvement`, 난이도: `Medium`, 상세 설명: `<Agent/스킬명> 개선 내용 요약`으로 표 작성)
+
+#### 2) 자가개선 스킬 (`self-improve`) 요건 및 명세
+- **역할 및 사양**:
+  - 디렉토리: `.agents/skills/self-improve/SKILL.md`
+  - 스킬명: `self-improve`
+  - 설명: "활성 대화 트랜스크립트를 읽어 에이전트 페르소나 및 스킬 세부 Instructions를 최적화하고 자가개선 이력을 AGENTS.md에 기록하는 스킬"
+  - `allowed-tools`: `view_file`, `write_to_file`, `list_dir`, `run_command`
+- **When to use this skill**:
+  - 사용자가 대화창에서 직접 "하네스 자가개선 진행해줘" 또는 "지금까지의 피드백을 기반으로 에이전트 성능을 개선해줘"와 같이 명시적 요청을 할 때.
+  - 오케스트레이터가 전체 작업을 완료하고 후속 조치로 자가개선 단계를 제안하여 사용자가 승인할 때.
+- **Workflow**:
+  - **Step 1. 로그 파일 위치 확인**: active brain 디렉토리 내의 `.system_generated/logs/` 폴더에서 가장 최근 생성되거나 활성화된 `transcript.jsonl` 파일 경로를 확정합니다.
+  - **Step 2. 사용자 피드백 및 에러 분석**: `view_file`로 로그 내용을 순회하며 사용자의 거절/재시도 요구 및 도구 에러 패턴을 추출합니다.
+  - **Step 3. 개선 계획 수립**: 마찰(friction)을 해결하기 위한 프롬프트 보강안(Constraint/Guideline)을 구상합니다.
+  - **Step 4. 코드 및 가이드라인 반영**: `replace_file_content` 또는 `write_to_file`을 이용하여 `.agents/` 내 해당 에이전트 마크다운/JSON 및 스킬 마크다운의 Instructions 부문에 해당 예외 처리 가이드를 병합(Merge)합니다.
+  - **Step 5. 구성 변경 이력 누적**: `AGENTS.md` 하단의 `[Change History]` 변경 이력 표에 `[Self-Improvement]` 항목으로 상세 갱신하고 작업을 종료합니다.
+
+#### 3) 오케스트레이터 (`orchestrator`) 통합 지침
+- `.agents/skills/orchestrator/SKILL.md` 설계 시 메인 에이전트가 협업 오케스트레이션 루프의 마지막 단계에서 다음을 수행하도록 SOP를 규정합니다:
+  - 전체 태스크 완료 후 사용자에게 자가개선(Self-Improvement) 가동 여부를 정중히 묻는 피드백 루프 구성.
+  - 사용자가 승인 시 `invoke_subagent` 도구로 `harness-optimizer` 에이전트를 백그라운드 호출하여 `self-improve` 스킬을 실행하도록 연동.
+
+---
+
+### 7. 사용자 수련도(Skill Level)별 차등 구성 지침
 사용자의 요청 사항 및 수준(수련도)을 분석하여 하네스 에이전트 팀 구성의 난이도와 구조적 복잡성을 다음과 같이 3단계로 차등화하여 설계합니다.
 
 - **초급 (Beginner)**:
@@ -165,16 +205,16 @@ allowed-tools:
 - 에이전트 간의 관계, 데이터 흐름, 호출 순서를 사용자가 직관적으로 이해할 수 있도록 `AGENTS.md`에 명확히 기술하여 설계안을 구조화합니다.
 
 ### Step 3. 에이전트 구성 (Agent Configuration)
-- 아키텍처 설계에 정의된 전문 에이전트들의 마크다운 파일(`.agents/agents/<AgentName>.md`) 및 Antigravity flat 규격을 준수한 `agent.json` 프로필 파일을 구성합니다.
+- 아키텍처 설계에 정의된 전문 에이전트들의 마크다운 파일(`.agents/agents/<AgentName>.md`) 및 Antigravity flat 규격을 준수한 `agent.json` 프로필 파일을 구성합니다. 이 때, 대화 로그 기반으로 하네스를 보완하는 전담 에이전트인 `harness-optimizer`(`HarnessOptimizer.md` 및 `agent.json`)도 함께 추가로 구성합니다.
 - 프로젝트 루트 디렉토리에 전체 에이전트 가이드라인인 `AGENTS.md`를 신규 생성하거나 기존 컨벤션을 깨뜨리지 않으면서 점진적으로 업데이트합니다. 이 과정에서 **오케스트레이터 스킬(orchestrator)을 가동하여 사용자가 내린 작업 명령(예: 하네스 자동 기획 및 기술 연구)을 실질적으로 실행하고 처리하는 구체적인 구동 지침 및 사용자 대화형 조작 매뉴얼에 관한 설명 섹션을 반드시 추가**해야 합니다.
 
 ### Step 4. 에이전트들이 사용할 스킬 구성 (Skill Configuration)
 - 각 에이전트가 업무 수행 시 직접 탑재하고 동작할 커스텀 스킬 목록을 확정합니다.
-- `.agents/skills/<skill-folder>/SKILL.md` 디렉토리 하위에 표준 규격(Frontmatter 및 When to use, Instructions, Workflow 3대 헤더)을 엄격히 준수한 스킬 파일들을 생성하거나 기존 구조를 정밀 리팩토링합니다.
+- `.agents/skills/<skill-folder>/SKILL.md` 디렉토리 하위에 표준 규격(Frontmatter 및 When to use, Instructions, Workflow 3대 헤더)을 엄격히 준수한 스킬 파일들을 생성하거나 기존 구조를 정밀 리팩토링합니다. 이 때, `harness-optimizer`가 사용할 자가개선 전용 스킬인 `self-improve` 스킬(`.agents/skills/self-improve/SKILL.md`)도 목록에 포함하여 함께 빌드합니다.
 
 ### Step 5. 오케스트레이터 스킬 구성 (Orchestrator Skill Configuration)
 - 에이전트들이 유기적이고 효과적으로 상호작용하며 자동화 루프를 돌 수 있도록 **Antigravity CLI 메인 에이전트**에게 장착할 **오케스트레이터 스킬**을 전용으로 구성합니다.
-- `.agents/skills/orchestrator/SKILL.md` 경로에 오케스트레이터 스킬 파일을 생성하고, 메인 에이전트가 서브 에이전트들을 기동(`invoke_subagent`), 통제 및 메시지(`send_message`) 처리하여 협업 루프를 지휘하고 실패 시 대응하는 구체적인 SOP와 프롬프트 지침을 구현합니다. 이 과정에서 **현재 해당 하네스 시스템에 배포되고 연동된 전체 서브 에이전트 명세(이름, 역할)와 개별 에이전트들이 소유한 커스텀 스킬(이름, 자동화 임무)에 대한 상세한 기술적 설명 명세 목록을 오케스트레이터 스킬 본문에 명시적으로 삽입**해야 합니다.
+- `.agents/skills/orchestrator/SKILL.md` 경로에 오케스트레이터 스킬 파일을 생성하고, 메인 에이전트가 서브 에이전트들을 기동(`invoke_subagent`), 통제 및 메시지(`send_message`) 처리하여 협업 루프를 지휘하고 실패 시 대응하는 구체적인 SOP와 프롬프트 지침을 구현합니다. 이 과정에서 **현재 해당 하네스 시스템에 배포되고 연동된 전체 서브 에이전트 명세(이름, 역할)와 개별 에이전트들이 소유한 커스텀 스킬(이름, 자동화 임무)에 대한 상세한 기술적 설명 명세 목록을 오케스트레이터 스킬 본문에 명시적으로 삽입**해야 하며, **작업 완료 후 사용자 동의를 얻거나 명시적 요청 시 `harness-optimizer`를 백그라운드로 호출하여 `self-improve`를 수행하는 자가개선(Optimization Phase) SOP를 오케스트레이션 루프의 마지막 단계로 포함**시켜야 합니다.
 
 ### Step 6. 하네스 구성 검토 및 테스트 (Review & Test)
 - 생성 또는 업데이트된 하네스 구조(에이전트 프로필, 스킬 마크다운)가 Antigravity 표준 규격에 맞게 적재되었는지 최종 점검합니다.

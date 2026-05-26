@@ -109,15 +109,17 @@ allowed-tools:
 
 ```
 <your-project>/
-├── AGENTS.md                                # 프로젝트 비전 + 행동 강령 + Change History 테이블
+├── AGENTS.md                                # 프로젝트 비전 + 행동 강령 + Change History 테이블 (자가개선 이력 누적)
 ├── _workspace/                              # 모든 에이전트의 중간 산출물 격리 폴더
 └── .agents/
     ├── agents/
     │   ├── <AgentName>.md                   # name/role/description Frontmatter + 행동 가이드
+    │   ├── HarnessOptimizer.md              # [신규] 대화 로그 기반 자가개선 전담 에이전트 강령
     │   └── <agent_name>/
     │       └── agent.json                   # Antigravity flat 규격 런타임 프로필
     └── skills/
-        ├── orchestrator/SKILL.md            # 메인 에이전트가 장착하는 협업 지휘 스킬
+        ├── orchestrator/SKILL.md            # 메인 에이전트가 장착하는 협업 지휘 스킬 (자가개선 SOP 내장)
+        ├── self-improve/SKILL.md            # [신규] 자가개선 자동화 수행 스킬 (로그 분석 및 프롬프트 패치)
         ├── <skill-1>/SKILL.md
         ├── <skill-2>/SKILL.md
         └── <skill-3>/SKILL.md
@@ -188,7 +190,20 @@ allowed-tools:
 }
 ```
 
-수신 에이전트는 JSON 을 먼저 파싱해 작업 대상과 사양을 식별한 뒤 도구 호출에 임합니다.
+
+## 대화 로그 기반 자가개선 (Self-Improvement)
+
+하네스로 생성된 에이전트 팀은 단순 실행에 그치지 않고, 사용자와의 협업 과정에서 축적된 대화 이력을 학습하여 스스로의 강령(Persona)과 스킬 지침을 능동적으로 업데이트하는 **자가개선 엔진**을 내장합니다.
+
+### 1) 작동 원리
+1. **대화 로그 수집**: 에이전트는 Antigravity CLI의 대화 세션 로그(`transcript.jsonl`)를 탐색합니다.
+2. **마찰 지점(Friction Points) 추출**: `harness-optimizer` 에이전트가 `self-improve` 스킬을 사용하여, 사용자가 직접 수정한 피드백(예: "CSS 변수만 사용해줘", "이 기능은 라이브러리로 대체해줘")이나 도구 실행 오류 문맥을 자동으로 감지합니다.
+3. **지침 업데이트**: 오류를 방지하고 사용자의 요구사항을 반영하기 위한 정밀한 프롬프트 보강안을 작성하여 대상 에이전트(`agent.json` / `<AgentName>.md`) 또는 스킬(`SKILL.md`)에 실시간으로 반영(`replace_file_content`)합니다.
+4. **이력 누적**: 개선 완료 후 `AGENTS.md`의 `[Change History]` 섹션에 `[Self-Improvement]` 타입으로 기록을 누적하여 업데이트 이력을 사용자가 추적할 수 있도록 합니다.
+
+### 2) 실행 방법
+- **명시적 호출**: 대화창에 `"지금까지의 대화 로그를 기반으로 자가개선을 진행해줘"` 또는 `"하네스 개선해줘"` 등의 프롬프트를 입력하면 오케스트레이터가 `harness-optimizer` 에이전트를 기동하여 수동으로 실행합니다.
+- **자동 제안**: 오케스트레이터의 전체 협업 루프가 완료된 시점에 자가개선 실행 여부를 사용자에게 묻고, 승인 시 백그라운드로 즉시 기동됩니다.
 
 ---
 
